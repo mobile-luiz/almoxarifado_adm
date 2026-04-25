@@ -233,7 +233,7 @@
         .data-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 800px;
+            min-width: 900px;
         }
         
         .data-table th {
@@ -587,6 +587,24 @@
             font-size: 0.8rem;
         }
         
+        /* Estilo para o campo de número com spinner */
+        .number-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .number-input input {
+            flex: 1;
+        }
+        
+        .number-input button {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            font-size: 1.2rem;
+        }
+        
         @media (max-width: 768px) {
             .menu-toggle {
                 display: flex;
@@ -746,7 +764,7 @@
                     </div>
                     <div class="card-body">
                         <div class="filter-bar">
-                            <input type="text" class="filter-input" id="userSearch" placeholder="🔍 Buscar por nome, email, estado ou cidade...">
+                            <input type="text" class="filter-input" id="userSearch" placeholder="🔍 Buscar por nome, email, estado, cidade ou almoxarifado...">
                         </div>
                         
                         <div class="user-stats" id="userStats">
@@ -769,10 +787,11 @@
                                         <th>E-mail</th>
                                         <th>Estado</th>
                                         <th>Cidade</th>
+                                        <th>Almoxarifado</th>
                                         <th>Data Cadastro</th>
                                         <th>Último Acesso</th>
                                         <th>Ações</th>
-                                    </tr>
+                                    </td>
                                 </thead>
                                 <tbody id="usersList"></tbody>
                             </table>
@@ -926,6 +945,14 @@
                             </select>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label>Almoxarifado (1 a 20)</label>
+                        <div class="number-input">
+                            <button type="button" id="decAlmoxarifado" class="btn btn-outline btn-sm">-</button>
+                            <input type="number" class="form-control" id="firstRegisterAlmoxarifado" min="1" max="20" step="1" value="1" placeholder="1 a 20">
+                            <button type="button" id="incAlmoxarifado" class="btn btn-outline btn-sm">+</button>
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-primary" style="width:100%">Cadastrar</button>
                 </form>
                 <div style="text-align:center; margin-top:16px;">
@@ -968,6 +995,14 @@
                             <select id="formCidade" class="form-control">
                                 <option value="">Primeiro selecione o estado</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Almoxarifado (1 a 20)</label>
+                        <div class="number-input">
+                            <button type="button" id="formDecAlmoxarifado" class="btn btn-outline btn-sm">-</button>
+                            <input type="number" class="form-control" id="formAlmoxarifado" min="1" max="20" step="1" value="1" placeholder="1 a 20">
+                            <button type="button" id="formIncAlmoxarifado" class="btn btn-outline btn-sm">+</button>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary" style="width:100%">
@@ -1123,7 +1158,7 @@
                             <thead>
                                 <tr>
                                     <th>ID</th><th>Nome</th><th>E-mail</th>
-                                    <th>Estado</th><th>Cidade</th>
+                                    <th>Estado</th><th>Cidade</th><th>Almoxarifado</th>
                                     <th>Data Cadastro</th><th>Último Acesso</th>
                                 </tr>
                             </thead>
@@ -1138,6 +1173,7 @@
                             <td>${escapeHtml(u.email)}</td>
                             <td>${escapeHtml(u.estado)}</td>
                             <td>${escapeHtml(u.cidade)}</td>
+                            <td>${escapeHtml(u.almoxarifado || '-')}</td>
                             <td>${formatDateOnly(u.dataCadastro)}</td>
                             <td>${formatDateOnly(u.ultimoAcesso)}</td>
                         </tr>
@@ -1251,7 +1287,7 @@
                             Pendentes: ${filtered.filter(s => s.status !== 'CONCLUIDO').length}
                         </div>
                         
-                        <table>
+                        <td>
                             <thead>
                                 <tr>
                                     <th>Protocolo</th><th>Solicitante</th><th>Estado</th><th>Cidade</th>
@@ -1344,6 +1380,7 @@
                     email: u.email || '-',
                     estado: u.estado || '-',
                     cidade: u.cidade || '-',
+                    almoxarifado: u.almoxarifado || '-',
                     senha: u.senha,
                     dataCadastro: u.dataCadastro,
                     ultimoAcesso: u.ultimoAcesso
@@ -1355,7 +1392,7 @@
         
         function getFilteredUsers() {
             const term = (document.getElementById('userSearch')?.value || '').toLowerCase();
-            return allUsers.filter(u => (u.nome + u.email + u.estado + u.cidade + u.id).toLowerCase().includes(term));
+            return allUsers.filter(u => (u.nome + u.email + u.estado + u.cidade + u.id + (u.almoxarifado || '')).toLowerCase().includes(term));
         }
         
         function renderUsersList() {
@@ -1366,7 +1403,7 @@
             const tbody = document.getElementById('usersList');
             
             if(!paginated.length) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Nenhum usuário encontrado</td></tr>';
+                tbody.innerHTML = '<td><td colspan="9" style="text-align:center;">Nenhum usuário encontrado</td></tr>';
                 document.getElementById('usersPagination').innerHTML = '';
                 return;
             }
@@ -1378,6 +1415,7 @@
                     <td>${escapeHtml(u.email)}</td>
                     <td>${escapeHtml(u.estado)}</td>
                     <td>${escapeHtml(u.cidade)}</td>
+                    <td><span style="background: ${u.almoxarifado !== '-' ? 'rgba(56, 189, 248, 0.2)' : 'transparent'}; padding: 4px 8px; border-radius: 8px;">${escapeHtml(u.almoxarifado || '-')}</span></td>
                     <td>${formatTimestamp(u.dataCadastro)}</td>
                     <td>${formatTimestamp(u.ultimoAcesso)}</td>
                     <td class="action-buttons">
@@ -1421,6 +1459,7 @@
             document.getElementById('formUserEmail').value = user.email;
             document.getElementById('formUserPassword').value = '';
             document.getElementById('passwordField').style.display = 'block';
+            document.getElementById('formAlmoxarifado').value = user.almoxarifado !== '-' ? user.almoxarifado : 1;
             
             await carregarEstados('formEstado');
             if(user.estado && user.estado !== '-') {
@@ -1696,6 +1735,37 @@
             }
         }
         
+        // Funções para controle do campo almoxarifado
+        function setupAlmoxarifadoControls(inputId, decId, incId) {
+            const input = document.getElementById(inputId);
+            const dec = document.getElementById(decId);
+            const inc = document.getElementById(incId);
+            
+            if(!input || !dec || !inc) return;
+            
+            dec.addEventListener('click', () => {
+                let val = parseInt(input.value) || 1;
+                if(val > 1) {
+                    input.value = val - 1;
+                }
+            });
+            
+            inc.addEventListener('click', () => {
+                let val = parseInt(input.value) || 1;
+                if(val < 20) {
+                    input.value = val + 1;
+                }
+            });
+            
+            input.addEventListener('change', () => {
+                let val = parseInt(input.value);
+                if(isNaN(val)) val = 1;
+                if(val < 1) val = 1;
+                if(val > 20) val = 20;
+                input.value = val;
+            });
+        }
+        
         // Funções de modais
         function showLoginModal() {
             document.getElementById('registerUserModal').classList.remove('show');
@@ -1733,6 +1803,7 @@
             const password = document.getElementById('firstRegisterPassword').value;
             const estado = document.getElementById('estado').value;
             const cidade = document.getElementById('cidade').value;
+            const almoxarifado = document.getElementById('firstRegisterAlmoxarifado').value;
             
             if(!name || !email || !password) {
                 showToast('Preencha todos os campos!', 'error');
@@ -1761,6 +1832,7 @@
                     senha: btoa(password),
                     estado: estado || '-',
                     cidade: cidade || '-',
+                    almoxarifado: almoxarifado || '1',
                     dataCadastro: Date.now(),
                     ultimoAcesso: Date.now()
                 });
@@ -1784,6 +1856,7 @@
             const password = document.getElementById('formUserPassword').value;
             const estado = document.getElementById('formEstado').value;
             const cidade = document.getElementById('formCidade').value;
+            const almoxarifado = document.getElementById('formAlmoxarifado').value;
             
             if(!name || !email) {
                 showToast('Preencha nome e e-mail!', 'error');
@@ -1807,6 +1880,7 @@
                     email: email,
                     estado: estado || '-',
                     cidade: cidade || '-',
+                    almoxarifado: almoxarifado || '1',
                     ultimoAcesso: Date.now()
                 };
                 
@@ -1859,6 +1933,7 @@
             document.getElementById('formUserName').value = '';
             document.getElementById('formUserEmail').value = '';
             document.getElementById('formUserPassword').value = '';
+            document.getElementById('formAlmoxarifado').value = '1';
             document.getElementById('passwordField').style.display = 'block';
             carregarEstados('formEstado');
             document.getElementById('formCidade').innerHTML = '<option value="">Primeiro selecione o estado</option>';
@@ -1941,6 +2016,10 @@
             document.getElementById('sidebar').classList.remove('mobile-open');
             document.getElementById('sidebarOverlay').classList.remove('mobile-open');
         });
+        
+        // Configurar controles do campo almoxarifado
+        setupAlmoxarifadoControls('firstRegisterAlmoxarifado', 'decAlmoxarifado', 'incAlmoxarifado');
+        setupAlmoxarifadoControls('formAlmoxarifado', 'formDecAlmoxarifado', 'formIncAlmoxarifado');
         
         // Inicialização
         function init() {
