@@ -11,6 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,6 +32,8 @@
             --card-bg: rgba(30, 41, 59, 0.95);
             --border: rgba(56, 189, 248, 0.2);
         }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Inter', sans-serif;
@@ -530,20 +534,22 @@
             font-size: 0.9rem;
         }
         
-        .status-concluido {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
+        .status-badge {
             padding: 4px 8px;
             border-radius: 6px;
             display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .status-concluido {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
         }
         
         .status-pendente {
             background: rgba(245, 158, 11, 0.2);
             color: #f59e0b;
-            padding: 4px 8px;
-            border-radius: 6px;
-            display: inline-block;
         }
         
         .pagination {
@@ -587,7 +593,6 @@
             font-size: 0.8rem;
         }
         
-        /* Estilo para o campo de número com spinner */
         .number-input {
             display: flex;
             align-items: center;
@@ -603,6 +608,21 @@
             height: 36px;
             padding: 0;
             font-size: 1.2rem;
+        }
+        
+        .new-badge {
+            background: var(--success);
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+            animation: pulse 1s ease;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
         }
         
         @media (max-width: 768px) {
@@ -697,9 +717,6 @@
             }
         }
     </style>
-    
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
@@ -743,7 +760,6 @@
                 </div>
             </div>
             
-            <!-- Página de Usuários -->
             <div id="usersPage" class="page-content" style="display: block;">
                 <div class="content-card">
                     <div class="card-header">
@@ -778,20 +794,10 @@
                             </div>
                         </div>
                         
-                        <div class="table-container" id="usersTableContainer">
-                            <table class="data-table" id="usersTable">
+                        <div class="table-container">
+                            <table class="data-table">
                                 <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Nome</th>
-                                        <th>E-mail</th>
-                                        <th>Estado</th>
-                                        <th>Cidade</th>
-                                        <th>Almoxarifado</th>
-                                        <th>Data Cadastro</th>
-                                        <th>Último Acesso</th>
-                                        <th>Ações</th>
-                                    </td>
+                                    <tr><th>ID</th><th>Nome</th><th>E-mail</th><th>Estado</th><th>Cidade</th><th>Almoxarifado</th><th>Data Cadastro</th><th>Último Acesso</th><th>Ações</th></tr>
                                 </thead>
                                 <tbody id="usersList"></tbody>
                             </table>
@@ -801,12 +807,12 @@
                 </div>
             </div>
 
-            <!-- Página de Solicitações -->
             <div id="solicitacoesPage" class="page-content" style="display: none;">
                 <div class="content-card">
                     <div class="card-header">
                         <div class="card-title">
                             <i class="fas fa-clipboard-list"></i> Relatório de Solicitações
+                            <span class="new-badge" id="newSolicitacoesBadge" style="display: none;">Novas</span>
                         </div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button class="btn btn-outline" id="refreshSolicitacoesBtn">
@@ -823,7 +829,7 @@
                     <div class="card-body">
                         <div class="filter-bar">
                             <input type="text" class="filter-input" id="solicitacaoSearch" placeholder="🔍 Buscar por protocolo, solicitante, obra...">
-                            <select id="statusFilter" class="filter-input" style="width: auto; min-width: 120px;">
+                            <select id="statusFilter" class="filter-input">
                                 <option value="">Todos os status</option>
                                 <option value="CONCLUIDO">Concluído</option>
                                 <option value="PENDENTE">Pendente</option>
@@ -838,7 +844,7 @@
                             </div>
                         </div>
                         
-                        <div class="user-stats" id="solicitacaoStats">
+                        <div class="user-stats">
                             <div class="stat-card">
                                 <div class="stat-value" id="totalSolicitacoes">0</div>
                                 <div class="stat-label">Total de Solicitações</div>
@@ -853,24 +859,10 @@
                             </div>
                         </div>
                         
-                        <div class="table-container" id="solicitacoesTableContainer">
-                            <table class="data-table" id="solicitacoesTable">
+                        <div class="table-container">
+                            <table class="data-table">
                                 <thead>
-                                    <tr>
-                                        <th>Protocolo</th>
-                                        <th>Solicitante</th>
-                                        <th>Estado Sol.</th>
-                                        <th>Cidade Sol.</th>
-                                        <th>Nome da Obra</th>
-                                        <th>Nº Obra</th>
-                                        <th>Transformador</th>
-                                        <th>Código</th>
-                                        <th>Quantidade</th>
-                                        <th>Status</th>
-                                        <th>Data Solicitação</th>
-                                        <th>Data Conclusão</th>
-                                        <th>Solicitado Por</th>
-                                    </tr>
+                                    <tr><th>Protocolo</th><th>Solicitante</th><th>Estado</th><th>Cidade</th><th>Obra</th><th>Nº Obra</th><th>Transformador</th><th>Código</th><th>Qtd</th><th>Status</th><th>Data Solicitação</th><th>Data Conclusão</th><th>Solicitado Por</th></tr>
                                 </thead>
                                 <tbody id="solicitacoesList"></tbody>
                             </table>
@@ -921,35 +913,31 @@
                 <form id="firstRegisterForm">
                     <div class="form-group">
                         <label>Nome Completo</label>
-                        <input type="text" class="form-control" id="firstRegisterName" required placeholder="Nome completo">
+                        <input type="text" class="form-control" id="firstRegisterName" required>
                     </div>
                     <div class="form-group">
                         <label>E-mail</label>
-                        <input type="email" class="form-control" id="firstRegisterEmail" required placeholder="email@exemplo.com">
+                        <input type="email" class="form-control" id="firstRegisterEmail" required>
                     </div>
                     <div class="form-group">
                         <label>Senha</label>
-                        <input type="password" class="form-control" id="firstRegisterPassword" required placeholder="Mínimo 6 caracteres">
+                        <input type="password" class="form-control" id="firstRegisterPassword" required>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Estado</label>
-                            <select id="estado" class="form-control">
-                                <option value="">Selecione o estado</option>
-                            </select>
+                            <select id="estado" class="form-control"><option value="">Selecione</option></select>
                         </div>
                         <div class="form-group">
                             <label>Cidade</label>
-                            <select id="cidade" class="form-control">
-                                <option value="">Primeiro selecione o estado</option>
-                            </select>
+                            <select id="cidade" class="form-control"><option value="">Selecione primeiro o estado</option></select>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Almoxarifado (1 a 20)</label>
                         <div class="number-input">
                             <button type="button" id="decAlmoxarifado" class="btn btn-outline btn-sm">-</button>
-                            <input type="number" class="form-control" id="firstRegisterAlmoxarifado" min="1" max="20" step="1" value="1" placeholder="1 a 20">
+                            <input type="number" class="form-control" id="firstRegisterAlmoxarifado" min="1" max="20" value="1">
                             <button type="button" id="incAlmoxarifado" class="btn btn-outline btn-sm">+</button>
                         </div>
                     </div>
@@ -973,11 +961,11 @@
                     <input type="hidden" id="formUserId">
                     <div class="form-group">
                         <label>Nome Completo *</label>
-                        <input type="text" class="form-control" id="formUserName" required placeholder="Nome completo">
+                        <input type="text" class="form-control" id="formUserName" required>
                     </div>
                     <div class="form-group">
                         <label>E-mail *</label>
-                        <input type="email" class="form-control" id="formUserEmail" required placeholder="email@exemplo.com">
+                        <input type="email" class="form-control" id="formUserEmail" required>
                     </div>
                     <div class="form-group" id="passwordField">
                         <label>Senha</label>
@@ -986,1060 +974,516 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Estado</label>
-                            <select id="formEstado" class="form-control">
-                                <option value="">Selecione o estado</option>
-                            </select>
+                            <select id="formEstado" class="form-control"><option value="">Selecione</option></select>
                         </div>
                         <div class="form-group">
                             <label>Cidade</label>
-                            <select id="formCidade" class="form-control">
-                                <option value="">Primeiro selecione o estado</option>
-                            </select>
+                            <select id="formCidade" class="form-control"><option value="">Selecione primeiro o estado</option></select>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Almoxarifado (1 a 20)</label>
                         <div class="number-input">
                             <button type="button" id="formDecAlmoxarifado" class="btn btn-outline btn-sm">-</button>
-                            <input type="number" class="form-control" id="formAlmoxarifado" min="1" max="20" step="1" value="1" placeholder="1 a 20">
+                            <input type="number" class="form-control" id="formAlmoxarifado" min="1" max="20" value="1">
                             <button type="button" id="formIncAlmoxarifado" class="btn btn-outline btn-sm">+</button>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%">
-                        <i class="fas fa-save"></i> Salvar
-                    </button>
+                    <button type="submit" class="btn btn-primary" style="width:100%"><i class="fas fa-save"></i> Salvar</button>
                 </form>
             </div>
         </div>
     </div>
 
     <div class="toast-container" id="toastContainer"></div>
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
+    <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
 
     <script>
-        // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCwTiqQBRBBYth4wJtjhdL1VQ0LZV7PKco",
             databaseURL: "https://almoxarifado-c2fbc-default-rtdb.firebaseio.com",
         };
         
-        // Variáveis globais
         let db = null;
         let currentUser = null;
         let allUsers = [];
         let allSolicitacoes = [];
         let usersCurrentPage = 1;
         let solicitacoesCurrentPage = 1;
+        let lastSolicitacaoCount = 0;
         const itemsPerPage = 10;
         
-        // Inicializar Firebase
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            console.log('Firebase inicializado com sucesso');
-        } catch(e) {
-            console.error('Erro ao inicializar Firebase:', e);
-        }
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
         
-        // Funções utilitárias
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toastContainer');
+        function showToast(msg, type = 'success') {
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
-            const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
-            toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
-            container.appendChild(toast);
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${msg}</span>`;
+            document.getElementById('toastContainer').appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
         
-        function showLoading() {
-            document.getElementById('loadingOverlay').classList.add('show');
-        }
-        
-        function hideLoading() {
-            document.getElementById('loadingOverlay').classList.remove('show');
-        }
+        function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
+        function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
         
         function formatTimestamp(ts) {
             if (!ts) return '-';
-            const d = new Date(ts);
-            return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR');
+            return new Date(ts).toLocaleString('pt-BR');
         }
         
-        function formatDateOnly(ts) {
-            if (!ts) return '-';
-            const d = new Date(ts);
-            return d.toLocaleDateString('pt-BR');
-        }
+        function generateId() { return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
         
-        function escapeHtml(s) {
-            if (!s) return '';
-            return String(s).replace(/[&<>]/g, function(m) {
-                return m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;';
-            });
-        }
-        
-        function generateId() {
-            return 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
-        }
-        
-        // Funções de PDF melhoradas
-        async function exportUsersToPDF() {
-            const filtered = getFilteredUsers();
-            
-            if(filtered.length === 0) {
-                showToast('Nenhum usuário para exportar!', 'warning');
-                return;
+        function renderPagination(type, total, current, onChange) {
+            const container = document.getElementById(`${type}Pagination`);
+            if (total <= 1) { container.innerHTML = ''; return; }
+            let html = `<button data-page="prev" ${current === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
+            for (let i = 1; i <= total; i++) {
+                if (i === 1 || i === total || (i >= current - 2 && i <= current + 2))
+                    html += `<button data-page="${i}" class="${i === current ? 'active-page' : ''}">${i}</button>`;
+                else if (i === current - 3 || i === current + 3) html += `<span class="page-info">...</span>`;
             }
-            
-            showLoading();
-            
-            try {
-                let htmlContent = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>Relatório de Usuários</title>
-                        <style>
-                            body {
-                                font-family: Arial, sans-serif;
-                                margin: 20px;
-                                color: #333;
-                            }
-                            h1 {
-                                text-align: center;
-                                color: #2c3e50;
-                                margin-bottom: 10px;
-                            }
-                            .subtitle {
-                                text-align: center;
-                                color: #7f8c8d;
-                                margin-bottom: 30px;
-                                font-size: 12px;
-                            }
-                            table {
-                                width: 100%;
-                                border-collapse: collapse;
-                                margin-top: 20px;
-                                font-size: 10px;
-                            }
-                            th {
-                                background-color: #3498db;
-                                color: white;
-                                padding: 8px;
-                                text-align: left;
-                                border: 1px solid #2980b9;
-                            }
-                            td {
-                                padding: 6px;
-                                border: 1px solid #bdc3c7;
-                            }
-                            .footer {
-                                text-align: center;
-                                margin-top: 30px;
-                                font-size: 10px;
-                                color: #7f8c8d;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <h1>Relatório de Usuários</h1>
-                        <div class="subtitle">Gerado em: ${new Date().toLocaleString('pt-BR')}</div>
-                        
-                        <div style="margin-bottom: 20px;">
-                            <strong>Resumo:</strong><br>
-                            Total de Usuários: ${filtered.length}
-                        </div>
-                        
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th><th>Nome</th><th>E-mail</th>
-                                    <th>Estado</th><th>Cidade</th><th>Almoxarifado</th>
-                                    <th>Data Cadastro</th><th>Último Acesso</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
-                
-                filtered.forEach(u => {
-                    htmlContent += `
-                        <tr>
-                            <td>${escapeHtml(u.id.substring(0,12))}...</td>
-                            <td>${escapeHtml(u.nome)}</td>
-                            <td>${escapeHtml(u.email)}</td>
-                            <td>${escapeHtml(u.estado)}</td>
-                            <td>${escapeHtml(u.cidade)}</td>
-                            <td>${escapeHtml(u.almoxarifado || '-')}</td>
-                            <td>${formatDateOnly(u.dataCadastro)}</td>
-                            <td>${formatDateOnly(u.ultimoAcesso)}</td>
-                        </tr>
-                    `;
+            html += `<button data-page="next" ${current === total ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
+            container.innerHTML = html;
+            container.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (btn.disabled) return;
+                    const page = btn.dataset.page;
+                    if (page === 'prev') onChange(current - 1);
+                    else if (page === 'next') onChange(current + 1);
+                    else onChange(parseInt(page));
                 });
-                
-                htmlContent += `
-                            </tbody>
-                        </table>
-                        <div class="footer">
-                            StockMaster - Sistema de Gestão de Usuários
-                        </div>
-                    </body>
-                    </html>
-                `;
-                
-                const opt = {
-                    margin: [0.5, 0.5, 0.5, 0.5],
-                    filename: `usuarios_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2 },
-                    jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
-                };
-                
-                await html2pdf().set(opt).from(htmlContent).save();
-                showToast('PDF gerado com sucesso!', 'success');
-                
-            } catch(e) {
-                console.error('Erro ao gerar PDF:', e);
-                showToast('Erro ao gerar PDF: ' + e.message, 'error');
-            } finally {
-                hideLoading();
-            }
+            });
         }
         
-        async function exportSolicitacoesToPDF() {
-            const filtered = getFilteredSolicitacoes();
-            
-            if(filtered.length === 0) {
-                showToast('Nenhuma solicitação para exportar!', 'warning');
-                return;
-            }
-            
-            showLoading();
-            
+        async function carregarEstados(selectId) {
+            const sel = document.getElementById(selectId);
             try {
-                let htmlContent = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>Relatório de Solicitações</title>
-                        <style>
-                            body {
-                                font-family: Arial, sans-serif;
-                                margin: 20px;
-                                color: #333;
-                            }
-                            h1 {
-                                text-align: center;
-                                color: #2c3e50;
-                                margin-bottom: 10px;
-                            }
-                            .subtitle {
-                                text-align: center;
-                                color: #7f8c8d;
-                                margin-bottom: 30px;
-                                font-size: 12px;
-                            }
-                            table {
-                                width: 100%;
-                                border-collapse: collapse;
-                                margin-top: 20px;
-                                font-size: 9px;
-                            }
-                            th {
-                                background-color: #3498db;
-                                color: white;
-                                padding: 8px;
-                                text-align: left;
-                                border: 1px solid #2980b9;
-                            }
-                            td {
-                                padding: 6px;
-                                border: 1px solid #bdc3c7;
-                            }
-                            .status-concluido {
-                                color: #27ae60;
-                                font-weight: bold;
-                            }
-                            .status-pendente {
-                                color: #e74c3c;
-                                font-weight: bold;
-                            }
-                            .footer {
-                                text-align: center;
-                                margin-top: 30px;
-                                font-size: 10px;
-                                color: #7f8c8d;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <h1>Relatório de Solicitações</h1>
-                        <div class="subtitle">Gerado em: ${new Date().toLocaleString('pt-BR')}</div>
-                        
-                        <div style="margin-bottom: 20px;">
-                            <strong>Resumo:</strong><br>
-                            Total de Solicitações: ${filtered.length}<br>
-                            Concluídas: ${filtered.filter(s => s.status === 'CONCLUIDO').length}<br>
-                            Pendentes: ${filtered.filter(s => s.status !== 'CONCLUIDO').length}
-                        </div>
-                        
-                        <td>
-                            <thead>
-                                <tr>
-                                    <th>Protocolo</th><th>Solicitante</th><th>Estado</th><th>Cidade</th>
-                                    <th>Nome da Obra</th><th>Nº Obra</th><th>Transformador</th>
-                                    <th>Código</th><th>Qtd</th><th>Status</th><th>Data Solicitação</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
-                
-                filtered.forEach(s => {
-                    htmlContent += `
-                        <tr>
-                            <td>${escapeHtml(s.protocolo || '-')}</td>
-                            <td>${escapeHtml(s.solicitante || '-')}</td>
-                            <td>${escapeHtml(s.estadoSolicitante || '-')}</td>
-                            <td>${escapeHtml(s.cidadeSolicitante || '-')}</td>
-                            <td>${escapeHtml(s.nomeObra || '-')}</td>
-                            <td>${escapeHtml(s.numeroObra || '-')}</td>
-                            <td>${escapeHtml(s.transformadorNome || '-')}</td>
-                            <td>${escapeHtml(s.productKey || '-')}</td>
-                            <td>${s.quantidadeSolicitada || '-'}</td>
-                            <td class="${s.status === 'CONCLUIDO' ? 'status-concluido' : 'status-pendente'}">${s.status || 'PENDENTE'}</td>
-                            <td>${formatDateOnly(s.dataSolicitacao)}</td>
-                        </tr>
-                    `;
+                const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados');
+                const estados = await res.json();
+                estados.sort((a,b) => a.nome.localeCompare(b.nome));
+                sel.innerHTML = '<option value="">Selecione o estado</option>';
+                estados.forEach(uf => {
+                    const opt = document.createElement('option');
+                    opt.value = uf.sigla;
+                    opt.textContent = uf.nome;
+                    sel.appendChild(opt);
                 });
-                
-                htmlContent += `
-                            </tbody>
-                        </table>
-                        <div class="footer">
-                            StockMaster - Sistema de Gestão de Solicitações
-                        </div>
-                    </body>
-                    </html>
-                `;
-                
-                const opt = {
-                    margin: [0.5, 0.5, 0.5, 0.5],
-                    filename: `solicitacoes_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2 },
-                    jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
-                };
-                
-                await html2pdf().set(opt).from(htmlContent).save();
-                showToast('PDF gerado com sucesso!', 'success');
-                
-            } catch(e) {
-                console.error('Erro ao gerar PDF:', e);
-                showToast('Erro ao gerar PDF: ' + e.message, 'error');
-            } finally {
-                hideLoading();
-            }
+            } catch(e) { console.error(e); }
         }
         
-        function exportSolicitacoesToCSV() {
-            const filtered = getFilteredSolicitacoes();
-            
-            if(filtered.length === 0) {
-                showToast('Nenhuma solicitação para exportar!', 'warning');
-                return;
-            }
-            
-            let csv = "Protocolo,Solicitante,Estado Sol.,Cidade Sol.,Nome da Obra,Número Obra,Transformador,Product Key,Quantidade,Status,Data Solicitação,Data Conclusão,Solicitado Por\n";
-            
-            filtered.forEach(s => {
-                csv += `"${s.protocolo || ''}","${s.solicitante || ''}","${s.estadoSolicitante || ''}","${s.cidadeSolicitante || ''}","${s.nomeObra || ''}","${s.numeroObra || ''}","${s.transformadorNome || ''}","${s.productKey || ''}","${s.quantidadeSolicitada || ''}","${s.status || ''}","${formatTimestamp(s.dataSolicitacao)}","${formatTimestamp(s.dataConclusao)}","${s.solicitadoPor || ''}"\n`;
-            });
-            
-            const blob = new Blob(["\uFEFF" + csv], {type: "text/csv;charset=utf-8;"});
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `solicitacoes_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showToast("Relatório CSV exportado com sucesso!");
+        async function carregarCidades(uf, selectId, padrao = '') {
+            const sel = document.getElementById(selectId);
+            if (!uf) { sel.innerHTML = '<option value="">Selecione primeiro o estado</option>'; return; }
+            try {
+                const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+                const cidades = await res.json();
+                cidades.sort((a,b) => a.nome.localeCompare(b.nome));
+                sel.innerHTML = '<option value="">Selecione a cidade</option>';
+                cidades.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.nome;
+                    opt.textContent = c.nome;
+                    if (padrao && c.nome === padrao) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            } catch(e) { console.error(e); }
         }
         
-        // Funções de usuários
-        function loadAllUsers() {
-            if(!db) return;
-            db.ref('usuarios').on('value', (snap) => {
-                const data = snap.val() || {};
-                allUsers = Object.entries(data).map(([id, u]) => ({
-                    id,
-                    nome: u.nome || '-',
-                    email: u.email || '-',
-                    estado: u.estado || '-',
-                    cidade: u.cidade || '-',
-                    almoxarifado: u.almoxarifado || '-',
-                    senha: u.senha,
-                    dataCadastro: u.dataCadastro,
-                    ultimoAcesso: u.ultimoAcesso
-                }));
-                renderUsersList();
-                updateStats();
-            });
+        function setupAlmoxarifado(inputId, decId, incId) {
+            const input = document.getElementById(inputId);
+            document.getElementById(decId).onclick = () => { let v = parseInt(input.value)||1; if(v>1) input.value = v-1; };
+            document.getElementById(incId).onclick = () => { let v = parseInt(input.value)||1; if(v<20) input.value = v+1; };
         }
         
         function getFilteredUsers() {
             const term = (document.getElementById('userSearch')?.value || '').toLowerCase();
-            return allUsers.filter(u => (u.nome + u.email + u.estado + u.cidade + u.id + (u.almoxarifado || '')).toLowerCase().includes(term));
+            return allUsers.filter(u => (u.nome+u.email+u.estado+u.cidade+u.almoxarifado).toLowerCase().includes(term));
         }
         
         function renderUsersList() {
             const filtered = getFilteredUsers();
             const totalPages = Math.ceil(filtered.length / itemsPerPage);
-            const start = (usersCurrentPage - 1) * itemsPerPage;
-            const paginated = filtered.slice(start, start + itemsPerPage);
+            const start = (usersCurrentPage-1)*itemsPerPage;
+            const paginated = filtered.slice(start, start+itemsPerPage);
             const tbody = document.getElementById('usersList');
-            
-            if(!paginated.length) {
-                tbody.innerHTML = '<td><td colspan="9" style="text-align:center;">Nenhum usuário encontrado</td></tr>';
-                document.getElementById('usersPagination').innerHTML = '';
-                return;
-            }
-            
+            if (!paginated.length) { tbody.innerHTML = '<tr><td colspan="9">Nenhum usuário encontrado</td></tr>'; document.getElementById('usersPagination').innerHTML = ''; return; }
             tbody.innerHTML = paginated.map(u => `
                 <tr>
-                    <td><code class="uid-code">${escapeHtml(u.id.substring(0,12))}...</code></td>
-                    <td><strong>${escapeHtml(u.nome)}</strong></td>
-                    <td>${escapeHtml(u.email)}</td>
-                    <td>${escapeHtml(u.estado)}</td>
-                    <td>${escapeHtml(u.cidade)}</td>
-                    <td><span style="background: ${u.almoxarifado !== '-' ? 'rgba(56, 189, 248, 0.2)' : 'transparent'}; padding: 4px 8px; border-radius: 8px;">${escapeHtml(u.almoxarifado || '-')}</span></td>
+                    <td><code class="uid-code">${u.id.substring(0,12)}...</code></td>
+                    <td><strong>${u.nome}</strong></td>
+                    <td>${u.email}</td>
+                    <td>${u.estado||'-'}</td>
+                    <td>${u.cidade||'-'}</td>
+                    <td>${u.almoxarifado||'-'}</td>
                     <td>${formatTimestamp(u.dataCadastro)}</td>
                     <td>${formatTimestamp(u.ultimoAcesso)}</td>
-                    <td class="action-buttons">
-                        ${currentUser?.id !== u.id ? 
-                            `<button class="btn btn-warning btn-sm" onclick="window.openEditUser('${u.id}')">
-                                <i class="fas fa-edit"></i> Editar
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="window.deleteUser('${u.id}')">
-                                <i class="fas fa-trash"></i> Excluir
-                            </button>` : 
-                            '<span style="color:#64748b;"><i class="fas fa-user-check"></i> Você</span>'
-                        }
-                    </td>
+                    <td class="action-buttons">${currentUser?.id !== u.id ? `<button class="btn btn-warning btn-sm" onclick="editarUsuario('${u.id}')"><i class="fas fa-edit"></i> Editar</button> <button class="btn btn-danger btn-sm" onclick="excluirUsuario('${u.id}')"><i class="fas fa-trash"></i> Excluir</button>` : '<span style="color:#64748b;">Você</span>'}</td>
                 </tr>
             `).join('');
-            
-            renderPagination('users', totalPages, usersCurrentPage, (page) => {
-                usersCurrentPage = page;
-                renderUsersList();
-            });
-        }
-        
-        function updateStats() {
+            renderPagination('users', totalPages, usersCurrentPage, p => { usersCurrentPage = p; renderUsersList(); });
             document.getElementById('totalUsers').innerText = allUsers.length;
-            if(currentUser?.ultimoAcesso) {
-                document.getElementById('lastAccess').innerHTML = formatTimestamp(currentUser.ultimoAcesso);
-            }
-        }
-        
-        async function updateLastAccess(userId) {
-            if(db) await db.ref(`usuarios/${userId}`).update({ultimoAcesso: Date.now()});
-        }
-        
-        window.openEditUser = async function(userId) {
-            const user = allUsers.find(u => u.id === userId);
-            if(!user) return;
-            
-            document.getElementById('userFormTitle').innerHTML = '<i class="fas fa-edit"></i> Editar Usuário';
-            document.getElementById('formUserId').value = userId;
-            document.getElementById('formUserName').value = user.nome;
-            document.getElementById('formUserEmail').value = user.email;
-            document.getElementById('formUserPassword').value = '';
-            document.getElementById('passwordField').style.display = 'block';
-            document.getElementById('formAlmoxarifado').value = user.almoxarifado !== '-' ? user.almoxarifado : 1;
-            
-            await carregarEstados('formEstado');
-            if(user.estado && user.estado !== '-') {
-                document.getElementById('formEstado').value = user.estado;
-                await carregarCidades(user.estado, 'formCidade', user.cidade);
-            }
-            
-            document.getElementById('userFormModal').classList.add('show');
-        };
-        
-        window.deleteUser = async function(userId) {
-            if(!confirm('Tem certeza que deseja excluir este usuário?')) return;
-            if(currentUser?.id === userId) {
-                showToast('Não é possível excluir seu próprio usuário!', 'error');
-                return;
-            }
-            
-            showLoading();
-            try {
-                await db.ref(`usuarios/${userId}`).remove();
-                showToast('Usuário excluído com sucesso!');
-            } catch(e) {
-                showToast('Erro ao excluir usuário', 'error');
-            } finally {
-                hideLoading();
-            }
-        };
-        
-        // Funções de solicitações
-        function loadSolicitacoes() {
-            if(!db) return;
-            db.ref('solicitacoes').on('value', (snap) => {
-                const data = snap.val() || {};
-                allSolicitacoes = Object.entries(data).map(([id, s]) => ({id, ...s}));
-                renderSolicitacoesList();
-                updateSolicitacaoStats();
-            });
+            if(currentUser?.ultimoAcesso) document.getElementById('lastAccess').innerHTML = formatTimestamp(currentUser.ultimoAcesso);
         }
         
         function getFilteredSolicitacoes() {
             const search = (document.getElementById('solicitacaoSearch')?.value || '').toLowerCase();
-            const statusFilter = document.getElementById('statusFilter')?.value || '';
-            const dataInicial = document.getElementById('dataInicial')?.value;
-            const dataFinal = document.getElementById('dataFinal')?.value;
+            const status = document.getElementById('statusFilter')?.value || '';
+            const dataIni = document.getElementById('dataInicial')?.value;
+            const dataFim = document.getElementById('dataFinal')?.value;
             
-            let filtered = allSolicitacoes.filter(s => 
-                (s.protocolo + '' + s.solicitante + '' + s.nomeObra + '' + s.transformadorNome + '' + s.productKey + '' + (s.estadoSolicitante || '') + '' + (s.cidadeSolicitante || '')).toLowerCase().includes(search)
-            );
+            let filtered = allSolicitacoes.filter(s => {
+                if (!(s.protocolo+s.solicitante+s.nomeObra+s.transformadorNome+s.productKey).toLowerCase().includes(search)) return false;
+                if (status && s.status !== status) return false;
+                if (dataIni && s.dataSolicitacao && new Date(s.dataSolicitacao) < new Date(dataIni)) return false;
+                if (dataFim && s.dataSolicitacao && new Date(s.dataSolicitacao) > new Date(dataFim+'T23:59:59')) return false;
+                return true;
+            });
             
-            if(statusFilter) {
-                filtered = filtered.filter(s => s.status === statusFilter);
-            }
-            
-            if(dataInicial) {
-                const ini = new Date(dataInicial);
-                ini.setHours(0,0,0,0);
-                filtered = filtered.filter(s => s.dataSolicitacao && new Date(s.dataSolicitacao) >= ini);
-            }
-            
-            if(dataFinal) {
-                const fim = new Date(dataFinal);
-                fim.setHours(23,59,59,999);
-                filtered = filtered.filter(s => s.dataSolicitacao && new Date(s.dataSolicitacao) <= fim);
-            }
-            
+            // Ordenar por data de solicitação (mais recente primeiro)
+            filtered.sort((a, b) => (b.dataSolicitacao || 0) - (a.dataSolicitacao || 0));
             return filtered;
         }
         
         function renderSolicitacoesList() {
             const filtered = getFilteredSolicitacoes();
             const totalPages = Math.ceil(filtered.length / itemsPerPage);
-            const start = (solicitacoesCurrentPage - 1) * itemsPerPage;
-            const paginated = filtered.slice(start, start + itemsPerPage);
+            const start = (solicitacoesCurrentPage-1)*itemsPerPage;
+            const paginated = filtered.slice(start, start+itemsPerPage);
             const tbody = document.getElementById('solicitacoesList');
-            
-            if(!paginated.length) {
-                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;">Nenhuma solicitação encontrada</td></tr>';
-                document.getElementById('solicitacoesPagination').innerHTML = '';
-                return;
-            }
-            
+            if (!paginated.length) { tbody.innerHTML = '<tr><td colspan="13">Nenhuma solicitação encontrada</td></tr>'; document.getElementById('solicitacoesPagination').innerHTML = ''; return; }
             tbody.innerHTML = paginated.map(s => `
                 <tr>
-                    <td><strong>${escapeHtml(s.protocolo)}</strong></td>
-                    <td>${escapeHtml(s.solicitante)}</td>
-                    <td>${escapeHtml(s.estadoSolicitante || '-')}</td>
-                    <td>${escapeHtml(s.cidadeSolicitante || '-')}</td>
-                    <td>${escapeHtml(s.nomeObra)}</td>
-                    <td>${escapeHtml(s.numeroObra)}</td>
-                    <td>${escapeHtml(s.transformadorNome)}</td>
-                    <td>${escapeHtml(s.productKey)}</td>
-                    <td>${s.quantidadeSolicitada || '-'}</td>
-                    <td><span class="status-badge ${s.status === 'CONCLUIDO' ? 'status-concluido' : 'status-pendente'}">${s.status || 'PENDENTE'}</span></td>
+                    <td><strong>${s.protocolo||'-'}</strong></td>
+                    <td>${s.solicitante||'-'}</td>
+                    <td>${s.estadoSolicitante||'-'}</td>
+                    <td>${s.cidadeSolicitante||'-'}</td>
+                    <td>${s.nomeObra||'-'}</td>
+                    <td>${s.numeroObra||'-'}</td>
+                    <td>${s.transformadorNome||'-'}</td>
+                    <td>${s.productKey||'-'}</td>
+                    <td>${s.quantidadeSolicitada||'-'}</td>
+                    <td><span class="status-badge ${s.status === 'CONCLUIDO' ? 'status-concluido' : 'status-pendente'}">${s.status||'PENDENTE'}</span></td>
                     <td>${formatTimestamp(s.dataSolicitacao)}</td>
                     <td>${formatTimestamp(s.dataConclusao)}</td>
-                    <td>${escapeHtml(s.solicitadoPor)}</td>
+                    <td>${s.solicitadoPor||'-'}</td>
                 </tr>
             `).join('');
-            
-            renderPagination('solicitacoes', totalPages, solicitacoesCurrentPage, (page) => {
-                solicitacoesCurrentPage = page;
-                renderSolicitacoesList();
-            });
-        }
-        
-        function updateSolicitacaoStats() {
-            const filtered = getFilteredSolicitacoes();
+            renderPagination('solicitacoes', totalPages, solicitacoesCurrentPage, p => { solicitacoesCurrentPage = p; renderSolicitacoesList(); });
             const total = filtered.length;
             const concluidas = filtered.filter(s => s.status === 'CONCLUIDO').length;
-            const pendentes = total - concluidas;
-            
             document.getElementById('totalSolicitacoes').innerText = total;
             document.getElementById('totalConcluidas').innerText = concluidas;
-            document.getElementById('totalPendentes').innerText = pendentes;
+            document.getElementById('totalPendentes').innerText = total - concluidas;
+            
+            // Mostrar badge de novas solicitações se houver mais que antes
+            if (lastSolicitacaoCount > 0 && allSolicitacoes.length > lastSolicitacaoCount) {
+                const badge = document.getElementById('newSolicitacoesBadge');
+                badge.style.display = 'inline-block';
+                setTimeout(() => { badge.style.display = 'none'; }, 5000);
+            }
+            lastSolicitacaoCount = allSolicitacoes.length;
         }
         
-        // Funções de paginação
-        function renderPagination(type, totalPages, currentPage, onPageChange) {
-            const container = document.getElementById(`${type}Pagination`);
-            if(totalPages <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-            
-            let html = `<button class="page-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>
-                <i class="fas fa-chevron-left"></i>
-            </button>`;
-            
-            for(let i = 1; i <= totalPages; i++) {
-                if(i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                    html += `<button class="page-btn ${i === currentPage ? 'active-page' : ''}" data-page="${i}">${i}</button>`;
-                } else if(i === currentPage - 3 || i === currentPage + 3) {
-                    html += `<span class="page-info">...</span>`;
-                }
-            }
-            
-            html += `<button class="page-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>
-                <i class="fas fa-chevron-right"></i>
-            </button>`;
-            
-            container.innerHTML = html;
-            
-            container.querySelectorAll('.page-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if(btn.disabled) return;
-                    const page = btn.dataset.page;
-                    if(page === 'prev') onPageChange(currentPage - 1);
-                    else if(page === 'next') onPageChange(currentPage + 1);
-                    else onPageChange(parseInt(page));
-                });
-            });
-        }
-        
-        // Funções de autenticação
         async function login(email, password) {
-            if(!db) {
-                showToast('Erro de conexão com o banco de dados!', 'error');
-                return false;
-            }
-            
             showLoading();
-            try {
-                const snap = await db.ref('usuarios').once('value');
-                const users = snap.val() || {};
-                let found = null;
-                
-                for(const [id, u] of Object.entries(users)) {
-                    if(u.email === email && u.senha === btoa(password)) {
-                        found = {id, ...u};
-                        break;
-                    }
-                }
-                
-                if(found) {
-                    currentUser = found;
-                    document.getElementById('userName').textContent = currentUser.nome?.split(' ')[0] || email.split('@')[0];
-                    document.getElementById('userEmail').textContent = email;
-                    await updateLastAccess(currentUser.id);
-                    showToast('Login realizado com sucesso!');
-                    document.getElementById('loginModal').classList.remove('show');
-                    loadAllUsers();
-                    loadSolicitacoes();
-                    return true;
-                } else {
-                    showToast('E-mail ou senha inválidos!', 'error');
-                    return false;
-                }
-            } catch(e) {
-                console.error('Erro no login:', e);
-                showToast('Erro ao realizar login', 'error');
-                return false;
-            } finally {
-                hideLoading();
-            }
+            const snap = await db.ref('usuarios').once('value');
+            const users = snap.val() || {};
+            let found = null;
+            for (const [id, u] of Object.entries(users))
+                if (u.email === email && u.senha === btoa(password)) { found = {id, ...u}; break; }
+            if (found) {
+                currentUser = found;
+                document.getElementById('userName').textContent = currentUser.nome.split(' ')[0] || email.split('@')[0];
+                document.getElementById('userEmail').textContent = email;
+                await db.ref(`usuarios/${currentUser.id}`).update({ultimoAcesso: Date.now()});
+                showToast('Login realizado!');
+                document.getElementById('loginModal').classList.remove('show');
+                loadAllUsers();
+                loadSolicitacoes();
+            } else showToast('E-mail ou senha inválidos!', 'error');
+            hideLoading();
         }
         
-        async function logout() {
-            showLoading();
-            try {
-                currentUser = null;
-                allUsers = [];
-                allSolicitacoes = [];
-                document.getElementById('userName').textContent = '';
-                document.getElementById('userEmail').textContent = '';
+        function loadAllUsers() {
+            db.ref('usuarios').on('value', snap => {
+                const data = snap.val() || {};
+                allUsers = Object.entries(data).map(([id, u]) => ({id, nome: u.nome||'-', email: u.email||'-', estado: u.estado||'-', cidade: u.cidade||'-', almoxarifado: u.almoxarifado||'-', dataCadastro: u.dataCadastro, ultimoAcesso: u.ultimoAcesso}));
                 renderUsersList();
+            });
+        }
+        
+        function loadSolicitacoes() {
+            db.ref('solicitacoes').on('value', snap => {
+                const data = snap.val() || {};
+                allSolicitacoes = Object.entries(data).map(([id, s]) => ({id, ...s}));
+                // Ordenar por data de solicitação (mais recente primeiro)
+                allSolicitacoes.sort((a, b) => (b.dataSolicitacao || 0) - (a.dataSolicitacao || 0));
                 renderSolicitacoesList();
-                showToast('Logout realizado com sucesso!');
-                showLoginModal();
-            } catch(e) {
-                console.error('Erro no logout:', e);
-                showToast('Erro ao realizar logout', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-        
-        function showPage(page) {
-            document.getElementById('usersPage').style.display = page === 'users' ? 'block' : 'none';
-            document.getElementById('solicitacoesPage').style.display = page === 'solicitacoes' ? 'block' : 'none';
-            document.getElementById('pageTitle').innerText = page === 'users' ? 'Usuários Cadastrados' : 'Relatório de Solicitações';
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
-        }
-        
-        // Funções de localidades
-        async function carregarEstados(selectId) {
-            const sel = document.getElementById(selectId);
-            if(!sel) return;
-            
-            try {
-                const res = await fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados");
-                const estados = await res.json();
-                estados.sort((a,b) => a.nome.localeCompare(b.nome));
-                const atual = sel.value;
-                sel.innerHTML = '<option value="">Selecione o estado</option>';
-                
-                estados.forEach(uf => {
-                    const opt = document.createElement("option");
-                    opt.value = uf.sigla;
-                    opt.textContent = uf.nome;
-                    if(atual && uf.sigla === atual) opt.selected = true;
-                    sel.appendChild(opt);
-                });
-            } catch(e) {
-                console.error('Erro ao carregar estados:', e);
-            }
-        }
-        
-        async function carregarCidades(uf, selectId, padrao = '') {
-            const sel = document.getElementById(selectId);
-            if(!sel || !uf) {
-                if(sel) sel.innerHTML = '<option value="">Primeiro selecione o estado</option>';
-                return;
-            }
-            
-            try {
-                sel.innerHTML = '<option value="">Carregando...</option>';
-                const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
-                const cidades = await res.json();
-                cidades.sort((a,b) => a.nome.localeCompare(b.nome));
-                sel.innerHTML = '<option value="">Selecione a cidade</option>';
-                
-                cidades.forEach(c => {
-                    const opt = document.createElement("option");
-                    opt.value = c.nome;
-                    opt.textContent = c.nome;
-                    if(padrao && c.nome === padrao) opt.selected = true;
-                    sel.appendChild(opt);
-                });
-            } catch(e) {
-                sel.innerHTML = '<option value="">Erro ao carregar</option>';
-                console.error('Erro ao carregar cidades:', e);
-            }
-        }
-        
-        // Funções para controle do campo almoxarifado
-        function setupAlmoxarifadoControls(inputId, decId, incId) {
-            const input = document.getElementById(inputId);
-            const dec = document.getElementById(decId);
-            const inc = document.getElementById(incId);
-            
-            if(!input || !dec || !inc) return;
-            
-            dec.addEventListener('click', () => {
-                let val = parseInt(input.value) || 1;
-                if(val > 1) {
-                    input.value = val - 1;
-                }
-            });
-            
-            inc.addEventListener('click', () => {
-                let val = parseInt(input.value) || 1;
-                if(val < 20) {
-                    input.value = val + 1;
-                }
-            });
-            
-            input.addEventListener('change', () => {
-                let val = parseInt(input.value);
-                if(isNaN(val)) val = 1;
-                if(val < 1) val = 1;
-                if(val > 20) val = 20;
-                input.value = val;
             });
         }
         
-        // Funções de modais
-        function showLoginModal() {
-            document.getElementById('registerUserModal').classList.remove('show');
-            document.getElementById('loginModal').classList.add('show');
-        }
-        
-        function closeLoginModal() {
-            document.getElementById('loginModal').classList.remove('show');
-        }
-        
-        function showRegisterUserModal() {
-            document.getElementById('loginModal').classList.remove('show');
-            document.getElementById('registerUserModal').classList.add('show');
-            carregarEstados('estado');
-        }
-        
-        function closeRegisterUserModal() {
-            document.getElementById('registerUserModal').classList.remove('show');
-        }
-        
-        function closeUserFormModal() {
-            document.getElementById('userFormModal').classList.remove('show');
-        }
-        
-        // Event Listeners
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await login(document.getElementById('loginEmail').value, document.getElementById('loginPassword').value);
-        });
-        
-        document.getElementById('firstRegisterForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('firstRegisterName').value;
-            const email = document.getElementById('firstRegisterEmail').value;
-            const password = document.getElementById('firstRegisterPassword').value;
-            const estado = document.getElementById('estado').value;
-            const cidade = document.getElementById('cidade').value;
-            const almoxarifado = document.getElementById('firstRegisterAlmoxarifado').value;
-            
-            if(!name || !email || !password) {
-                showToast('Preencha todos os campos!', 'error');
-                return;
+        window.editarUsuario = async function(id) {
+            const user = allUsers.find(u => u.id === id);
+            if (!user) return;
+            document.getElementById('userFormTitle').innerHTML = '<i class="fas fa-edit"></i> Editar Usuário';
+            document.getElementById('formUserId').value = id;
+            document.getElementById('formUserName').value = user.nome;
+            document.getElementById('formUserEmail').value = user.email;
+            document.getElementById('formUserPassword').value = '';
+            document.getElementById('formAlmoxarifado').value = user.almoxarifado !== '-' ? user.almoxarifado : 1;
+            await carregarEstados('formEstado');
+            if (user.estado && user.estado !== '-') {
+                document.getElementById('formEstado').value = user.estado;
+                await carregarCidades(user.estado, 'formCidade', user.cidade);
             }
-            
-            if(password.length < 6) {
-                showToast('A senha deve ter no mínimo 6 caracteres', 'error');
-                return;
-            }
-            
+            document.getElementById('userFormModal').classList.add('show');
+        };
+        
+        window.excluirUsuario = async function(id) {
+            if (!confirm('Tem certeza?')) return;
+            if (currentUser?.id === id) { showToast('Não pode excluir seu próprio usuário!', 'error'); return; }
             showLoading();
-            try {
-                const snap = await db.ref('usuarios').once('value');
-                const users = snap.val() || {};
-                
-                if(Object.values(users).some(u => u.email === email)) {
-                    showToast('E-mail já cadastrado!', 'error');
-                    return;
-                }
-                
-                const newId = generateId();
-                await db.ref(`usuarios/${newId}`).set({
-                    nome: name,
-                    email: email,
-                    senha: btoa(password),
-                    estado: estado || '-',
-                    cidade: cidade || '-',
-                    almoxarifado: almoxarifado || '1',
-                    dataCadastro: Date.now(),
-                    ultimoAcesso: Date.now()
-                });
-                
-                showToast('Cadastro realizado com sucesso! Faça login.');
-                closeRegisterUserModal();
-                showLoginModal();
-            } catch(e) {
-                console.error('Erro ao cadastrar:', e);
-                showToast('Erro ao cadastrar usuário', 'error');
-            } finally {
-                hideLoading();
-            }
-        });
+            await db.ref(`usuarios/${id}`).remove();
+            showToast('Usuário excluído!');
+            hideLoading();
+        };
         
-        document.getElementById('userForm').addEventListener('submit', async (e) => {
+        document.getElementById('loginForm').onsubmit = async e => { e.preventDefault(); await login(loginEmail.value, loginPassword.value); };
+        document.getElementById('firstRegisterForm').onsubmit = async e => {
             e.preventDefault();
-            const id = document.getElementById('formUserId').value;
-            const name = document.getElementById('formUserName').value;
-            const email = document.getElementById('formUserEmail').value;
-            const password = document.getElementById('formUserPassword').value;
-            const estado = document.getElementById('formEstado').value;
-            const cidade = document.getElementById('formCidade').value;
-            const almoxarifado = document.getElementById('formAlmoxarifado').value;
-            
-            if(!name || !email) {
-                showToast('Preencha nome e e-mail!', 'error');
-                return;
-            }
-            
+            const name = firstRegisterName.value, email = firstRegisterEmail.value, password = firstRegisterPassword.value, estado = estado.value, cidade = cidade.value, almox = firstRegisterAlmoxarifado.value;
+            if (password.length < 6) { showToast('Senha mínima 6 caracteres', 'error'); return; }
             showLoading();
-            try {
-                const snap = await db.ref('usuarios').once('value');
-                const users = snap.val() || {};
+            const snap = await db.ref('usuarios').once('value');
+            if (Object.values(snap.val()||{}).some(u => u.email === email)) { showToast('E-mail já existe', 'error'); hideLoading(); return; }
+            await db.ref(`usuarios/${generateId()}`).set({nome: name, email, senha: btoa(password), estado: estado||'-', cidade: cidade||'-', almoxarifado: almox, dataCadastro: Date.now(), ultimoAcesso: Date.now()});
+            showToast('Cadastro realizado! Faça login.');
+            closeRegisterUserModal();
+            showLoginModal();
+            hideLoading();
+        };
+        
+        document.getElementById('userForm').onsubmit = async e => {
+            e.preventDefault();
+            const id = formUserId.value, name = formUserName.value, email = formUserEmail.value, password = formUserPassword.value, estado = formEstado.value, cidade = formCidade.value, almox = formAlmoxarifado.value;
+            showLoading();
+            const snap = await db.ref('usuarios').once('value');
+            for (const [uid, ud] of Object.entries(snap.val()||{}))
+                if (ud.email === email && uid !== id) { showToast('E-mail já existe', 'error'); hideLoading(); return; }
+            const update = {nome: name, email, estado: estado||'-', cidade: cidade||'-', almoxarifado: almox, ultimoAcesso: Date.now()};
+            if (password && password.trim()) { if (password.length < 6) { showToast('Senha mínima 6 caracteres', 'error'); hideLoading(); return; } update.senha = btoa(password); }
+            if (id) await db.ref(`usuarios/${id}`).update(update);
+            else { if (!update.senha) { showToast('Senha obrigatória', 'error'); hideLoading(); return; } update.dataCadastro = Date.now(); await db.ref(`usuarios/${generateId()}`).set(update); }
+            showToast(id ? 'Atualizado!' : 'Cadastrado!');
+            closeUserFormModal();
+            hideLoading();
+        };
+        
+        document.getElementById('logoutBtn').onclick = () => { currentUser = null; showLoginModal(); showToast('Logout realizado!'); };
+        document.getElementById('refreshUsersBtn').onclick = () => loadAllUsers();
+        document.getElementById('refreshSolicitacoesBtn').onclick = () => loadSolicitacoes();
+        document.getElementById('exportSolicitacoesCsvBtn').onclick = () => {
+            const filtered = getFilteredSolicitacoes();
+            let csv = "Protocolo,Solicitante,Estado,Cidade,Obra,Nº Obra,Transformador,Código,Qtd,Status,Data Solicitação,Data Conclusão,Solicitado Por\n";
+            filtered.forEach(s => csv += `"${s.protocolo||''}","${s.solicitante||''}","${s.estadoSolicitante||''}","${s.cidadeSolicitante||''}","${s.nomeObra||''}","${s.numeroObra||''}","${s.transformadorNome||''}","${s.productKey||''}","${s.quantidadeSolicitada||''}","${s.status||''}","${formatTimestamp(s.dataSolicitacao)}","${formatTimestamp(s.dataConclusao)}","${s.solicitadoPor||''}"\n`);
+            const blob = new Blob(["\uFEFF"+csv], {type: "text/csv"});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `solicitacoes_${Date.now()}.csv`; a.click();
+            showToast('CSV exportado!');
+        };
+        
+  async function exportToPDF(type) {
+    showLoading();
+    
+    try {
+        const filtered = type === 'users' ? getFilteredUsers() : getFilteredSolicitacoes();
+        
+        if (!filtered || filtered.length === 0) {
+            showToast('Nenhum dado para exportar!', 'warning');
+            hideLoading();
+            return;
+        }
+
+        const isUsers = type === 'users';
+        const titulo = isUsers ? 'Relatório de Usuários' : 'Relatório de Solicitações';
+
+        // Construção do HTML com CSS focado em ALTO CONTRASTE
+        let html = `
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; color: #000; }
+                h1 { color: #1a2a3a; font-size: 22px; margin-bottom: 5px; }
+                .info { font-size: 12px; color: #444; margin-bottom: 20px; }
                 
-                for(const [uid, ud] of Object.entries(users)) {
-                    if(ud.email === email && uid !== id) {
-                        showToast('E-mail já existe para outro usuário!', 'error');
-                        return;
-                    }
+                table { width: 100%; border-collapse: collapse; table-layout: auto; }
+                
+                /* Cabeçalho Escuro com Texto Branco */
+                th { 
+                    background-color: #2c3e50 !important; 
+                    color: #ffffff !important; 
+                    padding: 10px 8px; 
+                    text-align: left; 
+                    font-size: 11px;
+                    border: 1px solid #1a2a3a;
+                    text-transform: uppercase;
                 }
                 
-                const update = {
-                    nome: name,
-                    email: email,
-                    estado: estado || '-',
-                    cidade: cidade || '-',
-                    almoxarifado: almoxarifado || '1',
-                    ultimoAcesso: Date.now()
-                };
-                
-                if(password && password.trim()) {
-                    if(password.length < 6) {
-                        showToast('A senha deve ter no mínimo 6 caracteres', 'error');
-                        return;
-                    }
-                    update.senha = btoa(password);
+                /* Células com Texto PRETO PURO e bordas visíveis */
+                td { 
+                    padding: 8px; 
+                    border: 1px solid #ccc; 
+                    font-size: 10px; 
+                    color: #000000 !important; 
+                    background-color: #ffffff;
                 }
                 
-                if(id) {
-                    await db.ref(`usuarios/${id}`).update(update);
-                } else {
-                    update.dataCadastro = Date.now();
-                    if(!update.senha) {
-                        showToast('Senha obrigatória para novo usuário!', 'error');
-                        return;
-                    }
-                    await db.ref(`usuarios/${generateId()}`).set(update);
+                /* Linhas alternadas (Zebra) para facilitar leitura horizontal */
+                tr:nth-child(even) td { 
+                    background-color: #f2f2f2 !important; 
                 }
-                
-                showToast(id ? 'Usuário atualizado com sucesso!' : 'Usuário cadastrado com sucesso!');
-                closeUserFormModal();
-            } catch(e) {
-                console.error('Erro ao salvar:', e);
-                showToast('Erro ao salvar usuário', 'error');
-            } finally {
-                hideLoading();
+            </style>
+        </head>
+        <body>
+            <h1>${titulo}</h1>
+            <div class="info">
+                <p>Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+                <p>Total de registros: ${filtered.length}</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>`;
+
+        if (isUsers) {
+            html += `<th>Nome</th><th>Email</th><th>Estado</th><th>Cidade</th><th>Almoxarifado</th><th>Cadastro</th>`;
+        } else {
+            html += `<th>Protocolo</th><th>Solicitante</th><th>Obra</th><th>Transformador</th><th>Qtd</th><th>Status</th><th>Data</th>`;
+        }
+
+        html += `</tr></thead><tbody>`;
+
+        filtered.forEach(item => {
+            if (isUsers) {
+                html += `
+                <tr>
+                    <td>${item.nome || '-'}</td>
+                    <td>${item.email || '-'}</td>
+                    <td>${item.estado || '-'}</td>
+                    <td>${item.cidade || '-'}</td>
+                    <td>${item.almoxarifado || '-'}</td>
+                    <td>${formatTimestamp(item.dataCadastro)}</td>
+                </tr>`;
+            } else {
+                html += `
+                <tr>
+                    <td><b>${item.protocolo || '-'}</b></td>
+                    <td>${item.solicitante || '-'}</td>
+                    <td>${item.nomeObra || '-'}</td>
+                    <td>${item.transformadorNome || '-'}</td>
+                    <td style="text-align:center">${item.quantidadeSolicitada || '0'}</td>
+                    <td>${item.status || 'PENDENTE'}</td>
+                    <td>${formatTimestamp(item.dataSolicitacao)}</td>
+                </tr>`;
             }
         });
+
+        html += `</tbody></table></body></html>`;
+
+        // Configurações otimizadas para nitidez
+        const opt = {
+            margin: 0.3,
+            filename: `Relatorio_${type}_${Date.now()}.pdf`,
+            image: { type: 'jpeg', quality: 1.0 },
+            html2canvas: { 
+                scale: 3, // Aumenta a resolução do "print"
+                useCORS: true,
+                logging: false,
+                letterRendering: true
+            },
+            jsPDF: { 
+                unit: 'in', 
+                format: 'a4', 
+                orientation: 'landscape' // Paisagem para caber mais colunas
+            }
+        };
+
+        await html2pdf().set(opt).from(html).save();
+        showToast('PDF gerado com sucesso!');
+
+    } catch (error) {
+        console.error("Erro ao exportar PDF:", error);
+        showToast('Erro ao gerar PDF', 'error');
+    } finally {
+        hideLoading();
+    }
+}  
+
+        document.getElementById('exportUsersPdfBtn').onclick = () => exportToPDF('users');
+        document.getElementById('exportSolicitacoesPdfBtn').onclick = () => exportToPDF('solicitacoes');
         
-        // Configurar todos os event listeners
-        document.getElementById('logoutBtn').addEventListener('click', logout);
-        document.getElementById('refreshUsersBtn').addEventListener('click', () => {
-            loadAllUsers();
-            showToast('Lista atualizada!');
-        });
-        document.getElementById('refreshSolicitacoesBtn').addEventListener('click', () => {
-            loadSolicitacoes();
-            showToast('Solicitações atualizadas!');
-        });
-        document.getElementById('exportSolicitacoesCsvBtn').addEventListener('click', exportSolicitacoesToCSV);
-        document.getElementById('exportUsersPdfBtn').addEventListener('click', exportUsersToPDF);
-        document.getElementById('exportSolicitacoesPdfBtn').addEventListener('click', exportSolicitacoesToPDF);
-        
-        document.getElementById('addUserBtn').addEventListener('click', () => {
+        document.getElementById('addUserBtn').onclick = async () => {
             document.getElementById('userFormTitle').innerHTML = '<i class="fas fa-user-plus"></i> Cadastrar Usuário';
             document.getElementById('formUserId').value = '';
             document.getElementById('formUserName').value = '';
             document.getElementById('formUserEmail').value = '';
             document.getElementById('formUserPassword').value = '';
             document.getElementById('formAlmoxarifado').value = '1';
-            document.getElementById('passwordField').style.display = 'block';
-            carregarEstados('formEstado');
-            document.getElementById('formCidade').innerHTML = '<option value="">Primeiro selecione o estado</option>';
+            await carregarEstados('formEstado');
+            document.getElementById('formCidade').innerHTML = '<option value="">Selecione primeiro o estado</option>';
             document.getElementById('userFormModal').classList.add('show');
-        });
-        
-        document.getElementById('userSearch').addEventListener('input', () => {
-            usersCurrentPage = 1;
-            renderUsersList();
-        });
-        
-        document.getElementById('solicitacaoSearch').addEventListener('input', () => {
-            solicitacoesCurrentPage = 1;
-            renderSolicitacoesList();
-            updateSolicitacaoStats();
-        });
-        
-        document.getElementById('statusFilter').addEventListener('change', () => {
-            solicitacoesCurrentPage = 1;
-            renderSolicitacoesList();
-            updateSolicitacaoStats();
-        });
-        
-        document.getElementById('dataInicial').addEventListener('change', () => {
-            solicitacoesCurrentPage = 1;
-            renderSolicitacoesList();
-            updateSolicitacaoStats();
-        });
-        
-        document.getElementById('dataFinal').addEventListener('change', () => {
-            solicitacoesCurrentPage = 1;
-            renderSolicitacoesList();
-            updateSolicitacaoStats();
-        });
-        
-        document.getElementById('limparFiltrosBtn').addEventListener('click', () => {
-            document.getElementById('dataInicial').value = '';
-            document.getElementById('dataFinal').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('solicitacaoSearch').value = '';
-            solicitacoesCurrentPage = 1;
-            renderSolicitacoesList();
-            updateSolicitacaoStats();
-        });
-        
-        document.getElementById('estado').addEventListener('change', function() {
-            carregarCidades(this.value, 'cidade');
-        });
-        
-        document.getElementById('formEstado').addEventListener('change', function() {
-            carregarCidades(this.value, 'formCidade');
-        });
-        
-        document.getElementById('showRegisterLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            showRegisterUserModal();
-        });
-        
-        document.getElementById('showLoginLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            showLoginModal();
-        });
-        
+        };
+        document.getElementById('userSearch').oninput = () => { usersCurrentPage = 1; renderUsersList(); };
+        document.getElementById('solicitacaoSearch').oninput = () => { solicitacoesCurrentPage = 1; renderSolicitacoesList(); };
+        document.getElementById('statusFilter').onchange = () => { solicitacoesCurrentPage = 1; renderSolicitacoesList(); };
+        document.getElementById('dataInicial').onchange = () => { solicitacoesCurrentPage = 1; renderSolicitacoesList(); };
+        document.getElementById('dataFinal').onchange = () => { solicitacoesCurrentPage = 1; renderSolicitacoesList(); };
+        document.getElementById('limparFiltrosBtn').onclick = () => {
+            document.getElementById('dataInicial').value = ''; document.getElementById('dataFinal').value = '';
+            document.getElementById('statusFilter').value = ''; document.getElementById('solicitacaoSearch').value = '';
+            solicitacoesCurrentPage = 1; renderSolicitacoesList();
+        };
+        document.getElementById('estado').onchange = function() { carregarCidades(this.value, 'cidade'); };
+        document.getElementById('formEstado').onchange = function() { carregarCidades(this.value, 'formCidade'); };
+        document.getElementById('showRegisterLink').onclick = e => { e.preventDefault(); showRegisterUserModal(); };
+        document.getElementById('showLoginLink').onclick = e => { e.preventDefault(); showLoginModal(); };
         document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                showPage(item.dataset.page);
-                const sidebar = document.getElementById('sidebar');
-                const overlay = document.getElementById('sidebarOverlay');
-                sidebar.classList.remove('mobile-open');
-                overlay.classList.remove('mobile-open');
-            });
+            item.onclick = () => {
+                const page = item.dataset.page;
+                document.getElementById('usersPage').style.display = page === 'users' ? 'block' : 'none';
+                document.getElementById('solicitacoesPage').style.display = page === 'solicitacoes' ? 'block' : 'none';
+                document.getElementById('pageTitle').innerText = page === 'users' ? 'Usuários Cadastrados' : 'Relatório de Solicitações';
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+                document.getElementById('sidebar').classList.remove('mobile-open');
+                document.getElementById('sidebarOverlay').classList.remove('mobile-open');
+            };
         });
-        
-        document.getElementById('menuToggle').addEventListener('click', () => {
+        document.getElementById('menuToggle').onclick = () => {
             document.getElementById('sidebar').classList.toggle('mobile-open');
             document.getElementById('sidebarOverlay').classList.toggle('mobile-open');
-        });
-        
-        document.getElementById('sidebarOverlay').addEventListener('click', () => {
+        };
+        document.getElementById('sidebarOverlay').onclick = () => {
             document.getElementById('sidebar').classList.remove('mobile-open');
             document.getElementById('sidebarOverlay').classList.remove('mobile-open');
-        });
+        };
         
-        // Configurar controles do campo almoxarifado
-        setupAlmoxarifadoControls('firstRegisterAlmoxarifado', 'decAlmoxarifado', 'incAlmoxarifado');
-        setupAlmoxarifadoControls('formAlmoxarifado', 'formDecAlmoxarifado', 'formIncAlmoxarifado');
+        setupAlmoxarifado('firstRegisterAlmoxarifado', 'decAlmoxarifado', 'incAlmoxarifado');
+        setupAlmoxarifado('formAlmoxarifado', 'formDecAlmoxarifado', 'formIncAlmoxarifado');
         
-        // Inicialização
-        function init() {
-            if(db) {
-                loadAllUsers();
-                loadSolicitacoes();
-            } else {
-                showToast('Erro de conexão com o banco de dados!', 'error');
-            }
-            showLoginModal();
-        }
+        function showLoginModal() { document.getElementById('registerUserModal').classList.remove('show'); document.getElementById('loginModal').classList.add('show'); }
+        function closeLoginModal() { document.getElementById('loginModal').classList.remove('show'); }
+        function showRegisterUserModal() { document.getElementById('loginModal').classList.remove('show'); document.getElementById('registerUserModal').classList.add('show'); carregarEstados('estado'); }
+        function closeRegisterUserModal() { document.getElementById('registerUserModal').classList.remove('show'); }
+        function closeUserFormModal() { document.getElementById('userFormModal').classList.remove('show'); }
         
-        init();
-        
-        // Exportar funções para uso global
-        window.openEditUser = openEditUser;
-        window.deleteUser = deleteUser;
-        window.closeUserFormModal = closeUserFormModal;
         window.closeLoginModal = closeLoginModal;
         window.closeRegisterUserModal = closeRegisterUserModal;
+        window.closeUserFormModal = closeUserFormModal;
+        
+        showLoginModal();
+        loadAllUsers();
+        loadSolicitacoes();
     </script>
 </body>
 </html>
